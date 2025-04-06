@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Results</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+            background-color: #f8f9fa;
+        }
+
+        .results-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .visualization-container {
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .visualization-image {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .flash-messages {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="results-container">
+            <h2 class="text-center mb-4">Dataset Analysis Results</h2>
+
+            <!-- Flash messages -->
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'error' else 'danger' }}" role="alert">
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Results section -->
+            <div class="alert alert-success">
+                <h4 class="alert-heading">Analysis completed successfully!</h4>
+                <p>The datasets associated with your PMIDs have been analyzed. You can view the visualizations below.
+                </p>
+            </div>
+
+            <!-- Visualization tabs -->
+            <ul class="nav nav-tabs" id="visualizationTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="clusters-tab" data-bs-toggle="tab" data-bs-target="#clusters"
+                        type="button" role="tab" aria-controls="clusters" aria-selected="true">
+                        Cluster Analysis
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="network-tab" data-bs-toggle="tab" data-bs-target="#network"
+                        type="button" role="tab" aria-controls="network" aria-selected="false">
+                        Network Graph
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab content -->
+            <div class="tab-content" id="visualizationTabContent">
+                <!-- Clusters visualization -->
+                <div class="tab-pane fade show active" id="clusters" role="tabpanel" aria-labelledby="clusters-tab">
+                    <div class="visualization-container">
+                        <h4>Dataset Clustering Visualization</h4>
+                        <p>This visualization shows how datasets are clustered based on their text content similarity.
+                        </p>
+                        <img src="{{ url_for('serve_visualization', filename=cluster_viz) }}"
+                            alt="Cluster Visualization" class="visualization-image">
+                    </div>
+                </div>
+
+                <!-- Network visualization -->
+                <div class="tab-pane fade" id="network" role="tabpanel" aria-labelledby="network-tab">
+                    <div class="visualization-container">
+                        <h4>Dataset-PMID Network Visualization</h4>
+                        <p>This network visualization shows connections between datasets and PubMed IDs.</p>
+                        <img src="{{ url_for('serve_visualization', filename=network_viz) }}"
+                            alt="Network Visualization" class="visualization-image">
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-grid gap-2 mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Analyze More PMIDs</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

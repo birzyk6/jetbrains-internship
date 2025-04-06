@@ -172,3 +172,11 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# folders for output files
+
+output/
+datasets/
+analysis/
+static/
+uploads/
