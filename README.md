@@ -18,6 +18,20 @@ This application allows users to:
 -   Interactive visualizations including cluster plots and network graphs
 -   Support for both single PubMed IDs and batch processing
 
+## Example Visualizations
+
+### Cluster Analysis
+
+Clusters show how datasets are related based on their content:
+
+![Cluster Visualization](example-vis/example-clustering.png)
+
+### Network Graph
+
+Network graph shows connections between datasets and PubMed IDs:
+
+![Network Visualization](example-vis/example-graph.png)
+
 ## Installation
 
 ### Prerequisites
