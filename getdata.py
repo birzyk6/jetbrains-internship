@@ -401,6 +401,9 @@ def download_dataset_files(
     failed_downloads = 0
     download_results = {}
 
+    # Track total datasets count
+    total_datasets = len(ftp_links)
+
     # Split tasks into batches for workers
     worker_batches = []
     for i in range(0, len(download_tasks), batch_size):
@@ -436,11 +439,30 @@ def download_dataset_files(
                     failed_in_batch = batch_size_actual - len(batch_results)
                     failed_downloads += failed_in_batch
 
-                    # Update progress bar
+                    # Update progress bar with more detailed information
                     progress.update(batch_size_actual)
                     progress.set_postfix(
-                        successful=successful_downloads, failed=failed_downloads
+                        successful=successful_downloads,
+                        failed=failed_downloads,
+                        datasets_success=len(download_results),
+                        datasets_total=total_datasets,
                     )
+
+                    # Call the progress callback with detailed information
+                    if progress_callback:
+                        current_progress = (
+                            len(download_results) / total_datasets
+                        ) * 100
+                        datasets_failed = total_datasets - len(download_results)
+                        progress_callback(
+                            successful_downloads,
+                            failed_downloads,
+                            len(download_results),
+                            datasets_failed,
+                            total_datasets,
+                            current_progress,
+                        )
+
                 except Exception as e:
                     print(f"Error processing batch: {str(e)}")
                     failed_downloads += len(worker_batches[futures[future]])
@@ -452,7 +474,8 @@ def download_dataset_files(
     print(
         f"Download completed: {successful_downloads} successful, {failed_downloads} failed"
     )
-    return download_results
+    print(f"Datasets: {len(download_results)}/{total_datasets} successfully downloaded")
+    return download_results, total_datasets - len(download_results)
 
 
 def download_and_save_datasets(
@@ -467,7 +490,7 @@ def download_and_save_datasets(
         progress_callback: Optional callback function for progress updates
 
     Returns:
-        Tuple of (links_file, download_results)
+        Tuple of (links_file, download_results, failed_datasets_count)
     """
     try:
         # Create output directory if it doesn't exist
@@ -487,7 +510,7 @@ def download_and_save_datasets(
         logger.info(f"Found {len(pmids)} PMIDs in {pmids_file}")
         if not pmids:
             logger.warning("No PMIDs found in the input file")
-            return None, []
+            return None, [], 0
 
         # Convert PMIDs to integers for the API
         pmid_ints = [int(pmid) for pmid in pmids]
@@ -498,7 +521,7 @@ def download_and_save_datasets(
 
         if not dataset_ids:
             logger.warning("No linked datasets found for the provided PMIDs")
-            return None, []
+            return None, [], 0
 
         logger.info(f"Found {len(dataset_ids)} linked datasets")
 
@@ -506,9 +529,19 @@ def download_and_save_datasets(
         logger.info("Retrieving FTP links for datasets")
         ftp_links = get_ftp_links(dataset_ids)
 
+        # Count how many datasets were found but couldn't get FTP links
+        failed_ftp_links = len(dataset_ids) - len(ftp_links)
+        total_datasets_found = len(dataset_ids)
+        logger.info(f"Found {total_datasets_found} total datasets")
+        logger.info(f"Failed to get FTP links for {failed_ftp_links} datasets")
+
+        # Update progress callback with initial dataset information
+        if progress_callback:
+            progress_callback(0, 0, 0, failed_ftp_links, total_datasets_found, 20)
+
         if not ftp_links:
             logger.warning("No FTP links found for the datasets")
-            return None, []
+            return None, [], len(dataset_ids)  # Return all datasets as failed
 
         # Step 3: Save FTP links to a file for reference
         links_file = save_ftp_links_to_file(ftp_links, os.path.dirname(output_dir))
@@ -536,26 +569,38 @@ def download_and_save_datasets(
                 # If any error checking the loop, default to sync
                 use_sync = True
 
+            download_results = {}
+            failed_datasets_count = (
+                failed_ftp_links  # Start with datasets that had no FTP links
+            )
+
             if use_sync:
                 # Use synchronous downloads
                 download_results = {}
-                for gdid, ftp_link in ftp_links.items():
+                for i, (gdid, ftp_link) in enumerate(ftp_links.items()):
                     result = download_dataset_sync(
                         gdid, ftp_link, output_dir, progress_callback
                     )
                     if result:
                         download_results[gdid] = result
-                        # Update progress if we have a callback
-                        if progress_callback and len(download_results) % 2 == 0:
-                            total_files = sum(
-                                len(files) for files in download_results.values()
-                            )
-                            progress_callback(total_files, 0, len(download_results))
+                    else:
+                        failed_datasets_count += 1  # Count failures
+
+                    # Update progress with failed datasets count
+                    if progress_callback and (i % 2 == 0 or i == len(ftp_links) - 1):
+                        total_files = sum(
+                            len(files) for files in download_results.values()
+                        )
+                        progress_callback(
+                            total_files, 0, len(download_results), failed_datasets_count
+                        )
             else:
-                # Use the normal async/threaded approach
-                download_results = download_dataset_files(
+                # Use the normal async/threaded approach, and count failures
+                download_results, failures = download_dataset_files(
                     ftp_links, output_dir, progress_callback=progress_callback
                 )
+                failed_datasets_count += failures
+
         except Exception as e:
             logger.error(f"Error in download process: {str(e)}")
             # Final fallback - simple synchronous download
@@ -569,13 +614,14 @@ def download_and_save_datasets(
 
         # Now we can safely log the results since download_results is defined
         logger.info(f"Download completed. Found {len(download_results)} datasets.")
+        logger.info(f"Failed to download {failed_datasets_count} datasets.")
 
-        return links_file, download_results
+        return links_file, download_results, failed_datasets_count, total_datasets_found
 
     except Exception as e:
         logger.error(f"Error downloading datasets: {str(e)}")
         traceback.print_exc()
-        return None, []
+        return None, [], 0
 
 
 def save_ftp_links_to_file(ftp_links, output_dir):
@@ -653,10 +699,11 @@ def download_dataset_sync(gdid, ftp_link, output_dir, progress_callback=None):
 if __name__ == "__main__":
     # This allows this file to be run directly for testing
     print("Starting dataset download process...")
-    links_file, download_results = download_and_save_datasets()
+    links_file, download_results, failed_datasets_count = download_and_save_datasets()
 
     if links_file:
         print(f"Process completed successfully. Links saved to {links_file}")
         print(f"Downloaded {len(download_results)} datasets")
+        print(f"Failed to download {failed_datasets_count} datasets")
     else:
         print("Process failed.")

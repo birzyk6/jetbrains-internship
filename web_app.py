@@ -265,48 +265,89 @@ def run_pipeline(session_id, pmids_file):
                 "downloaded_files": 0,
                 "failed_files": 0,
                 "found_datasets": 0,
+                "failed_datasets": 0,  # Add tracking for failed datasets
             },
         )
 
-        # Create a custom download callback to update progress - modified to round percentage
-        def download_progress_callback(successful, failed, total_datasets):
-            # Calculate progress and round to 2 decimal places
-            progress_value = min(
-                25 + (successful / max(1, successful + failed) * 25), 49
-            )
+        # Create a custom download callback to update progress with enhanced information
+        def download_progress_callback(
+            successful,
+            failed,
+            successful_datasets,
+            failed_datasets=0,
+            total_datasets=0,
+            progress_value=25,
+        ):
+            # Keep progress between 20-49% during download phase
+            progress_value = min(max(20, progress_value), 49)
             progress_value = round(progress_value, 2)
+
+            # Calculate download percentage
+            download_percent = 0
+            if total_datasets > 0:
+                download_percent = round(
+                    (successful_datasets / total_datasets) * 100, 2
+                )
 
             update_job_status(
                 session_id,
                 "downloading",
-                f"Downloaded {successful} files from {total_datasets} datasets",
+                f"Downloaded {successful} files from {successful_datasets}/{total_datasets} datasets ({download_percent}%)",
                 progress_value,
                 stats={
                     "downloaded_files": successful,
-                    # We're still tracking failed files internally but not displaying them
                     "failed_files": failed,
-                    "found_datasets": total_datasets,
+                    "datasets_found": total_datasets,  # Total datasets found
+                    "found_datasets": successful_datasets,  # Successful datasets
+                    "failed_datasets": failed_datasets,  # Failed datasets
+                    "download_percent": download_percent,  # Download percentage
                 },
             )
 
         try:
-            links_file, download_results = download_and_save_datasets(
-                pmids_file=pmids_file,
-                output_dir=session_dataset_dir,
-                progress_callback=download_progress_callback,
+            # Starting the download process
+            update_job_status(
+                session_id,
+                "searching",
+                f"Searching for datasets related to {len(pmids)} PMIDs...",
+                20,
+                stats={
+                    "total_pmids": len(pmids),
+                    "downloaded_files": 0,
+                    "failed_files": 0,
+                    "datasets_found": 0,
+                    "found_datasets": 0,
+                    "failed_datasets": 0,
+                    "download_percent": 0,
+                },
             )
 
-            # Final download stats update - modified message to remove mention of failures
+            links_file, download_results, failed_datasets, total_datasets = (
+                download_and_save_datasets(
+                    pmids_file=pmids_file,
+                    output_dir=session_dataset_dir,
+                    progress_callback=download_progress_callback,
+                )
+            )
+
+            # Final download stats update
             if download_results:
                 total_files = sum(len(files) for files in download_results.values())
+                download_percent = round(
+                    (len(download_results) / total_datasets) * 100, 2
+                )
+
                 update_job_status(
                     session_id,
                     "processing",
-                    f"Completed downloads: {total_files} files across {len(download_results)} datasets",
+                    f"Completed downloads: {total_files} files from {len(download_results)}/{total_datasets} datasets ({download_percent}%)",
                     50,
                     stats={
                         "downloaded_files": total_files,
-                        "found_datasets": len(download_results),
+                        "datasets_found": total_datasets,  # Total datasets found
+                        "found_datasets": len(download_results),  # Successful datasets
+                        "failed_datasets": failed_datasets,  # Failed datasets
+                        "download_percent": download_percent,  # Download percentage
                     },
                 )
 

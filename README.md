@@ -32,6 +32,26 @@ Network graph shows connections between datasets and PubMed IDs:
 
 ![Network Visualization](example-vis/example-graph.png)
 
+## Application Interface
+
+### Home Page
+
+Enter PubMed IDs to start the analysis:
+
+![Home Page](example-sc/ui.png)
+
+### Progress Tracking
+
+Monitor the download and analysis progress in real-time:
+
+![Progress Tracking](example-sc/processing.png)
+
+### Results View
+
+View the generated visualizations:
+
+![Results Page](example-sc/results.png)
+
 ## Installation
 
 ### Prerequisites

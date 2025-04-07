@@ -71,11 +71,11 @@
                     </h5>
                     <p id="status-message" class="card-text status-message">{{ status.message }}</p>
 
-                    <!-- Modified download stats section - removed failed column -->
+                    <!-- Modified download stats section with percentage indicator -->
                     <div id="download-stats" class="mt-3 mb-3 {% if status.stats is not defined %}d-none{% endif %}">
-                        <h6>Download Statistics:</h6>
-                        <div class="row">
-                            <div class="col-md-4">
+                        <h6>Dataset Statistics:</h6>
+                        <div class="row justify-content-center align-items-center">
+                            <div class="col-md-3">
                                 <div class="card bg-light">
                                     <div class="card-body p-2 text-center">
                                         <small class="text-muted">PMIDs</small>
@@ -84,21 +84,27 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="card bg-light">
+                            <div class="col-md-3">
+                                <div class="card bg-info bg-opacity-25">
                                     <div class="card-body p-2 text-center">
                                         <small class="text-muted">Datasets Found</small>
-                                        <h5 id="dataset-count">{{ status.stats.found_datasets if status.stats is defined
-                                            and status.stats.found_datasets is defined else 0 }}</h5>
+                                        <h5 id="datasets-found-count">{{ status.stats.datasets_found if status.stats is
+                                            defined
+                                            and status.stats.datasets_found is defined else 0 }}</h5>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="card bg-success bg-opacity-25">
                                     <div class="card-body p-2 text-center">
-                                        <small class="text-muted">Files Downloaded</small>
-                                        <h5 id="success-count">{{ status.stats.downloaded_files if status.stats is
-                                            defined and status.stats.downloaded_files is defined else 0 }}</h5>
+                                        <small class="text-muted">Downloaded</small>
+                                        <h5 id="success-count">{{ status.stats.found_datasets if status.stats is
+                                            defined and status.stats.found_datasets is defined else 0 }}
+                                            <small class="text-muted" id="download-percent">
+                                                ({{ status.stats.download_percent if status.stats is defined
+                                                and status.stats.download_percent is defined else 0 }}%)
+                                            </small>
+                                        </h5>
                                     </div>
                                 </div>
                             </div>
@@ -142,11 +148,13 @@
                             if (data.stats.total_pmids !== undefined)
                                 document.getElementById('pmid-count').textContent = data.stats.total_pmids;
 
-                            if (data.stats.found_datasets !== undefined)
-                                document.getElementById('dataset-count').textContent = data.stats.found_datasets;
+                            if (data.stats.datasets_found !== undefined)
+                                document.getElementById('datasets-found-count').textContent = data.stats.datasets_found;
 
-                            if (data.stats.downloaded_files !== undefined)
-                                document.getElementById('success-count').textContent = data.stats.downloaded_files;
+                            if (data.stats.found_datasets !== undefined) {
+                                document.getElementById('success-count').innerHTML =
+                                    data.stats.found_datasets
+                            }
                         }
 
                         // If processing is complete or failed, stop polling and redirect if complete
