@@ -143,7 +143,7 @@ For this method, you need to create a file named `PMIDs_list.txt` in the root di
 -   `static/`: Static files and generated visualizations
 -   `analysis/`: Plots for clustering and network graphs, and csv's of **clustering results, similarity of documents matrix, tf-idf features and tf-idf value matrix.**
 -   `datasets/`: Downloaded datasets from GEO Database. They are downloaded in `.gz` format, and then extracted to `SOFT` format for processing.
--   `output\`: csv file of required text fields, and corresponding `pubmed_ids`
+-   `output/`: csv file of required text fields, and corresponding `pubmed_ids`
 
 ## Troubleshooting
 
